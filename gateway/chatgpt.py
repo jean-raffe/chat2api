@@ -1,7 +1,8 @@
 import json
+import os
 from urllib.parse import quote
 
-from fastapi import Request
+from fastapi import Request, HTTPException
 from fastapi.responses import HTMLResponse
 
 from app import app, templates
@@ -10,7 +11,6 @@ from utils.kv_utils import set_value_for_key
 
 with open("templates/chatgpt_context.json", "r", encoding="utf-8") as f:
     chatgpt_context = json.load(f)
-
 
 @app.get("/", response_class=HTMLResponse)
 async def chatgpt_html(request: Request):
@@ -22,6 +22,12 @@ async def chatgpt_html(request: Request):
 
     if len(token) != 45 and not token.startswith("eyJhbGciOi"):
         token = quote(token)
+
+    preset_tokens = os.environ.get("PRESET_TOKENS")
+    if preset_tokens:
+        preset_tokens = preset_tokens.split(",")
+        if token not in preset_tokens:
+            raise HTTPException(status_code=401, detail="Unauthorized")
 
     user_remix_context = chatgpt_context.copy()
     set_value_for_key(user_remix_context, "user", {"id": "user-chatgpt"})
